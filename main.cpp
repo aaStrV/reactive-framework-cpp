@@ -1,6 +1,5 @@
 #include <iostream>
 #include <gtest.h>
-#include <sys/time.h>
 #include "reactive-framework-cpp.h"
 using namespace std;
 
