@@ -13,8 +13,9 @@
  * через разные каналы(например ethernet)
  */
 
-#include <set>
+#include <list>
 #include <functional>
+//#include <iterator>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -56,8 +57,8 @@ typedef timeval timeval_t;
 namespace reacf {
 template<typename T>
 class Event {
-  timeval_t timestamp;
-  const T value;
+  timeval_t timestamp_;
+  const T value_;
 
   explicit Event(const Event &e) = delete;
   void operator=(const Event &e) = delete;
@@ -65,22 +66,22 @@ class Event {
  public:
   explicit Event(T value)
       :
-      value(value) {
-    gettimeofday(&timestamp, NULL);
+      value_(value) {
+    gettimeofday(&timestamp_, NULL);
   }
 
   timeval_t getTimeStamp(void) {
-    return timestamp;
+    return timestamp_;
   }
 
   T getValue(void) {
-    return value;
+    return value_;
   }
 };
 
 /**
  * Методы:
- *  subscribe( fun(event<T> e) ), unSubscribe( fun(event<T> e) ); fun:unaryFunction
+ *  subscribe( fun(event<T> e) ), unSubscribe( fun(event<T> e) ); fun:lambda
  *  push(event<T> e)
  *
  * Поддерживаемые функции:
@@ -91,8 +92,8 @@ class Event {
  */
 template<typename T>
 class Stream {
-//  std::set<std::function<void(Event<T>)>> subscribers;
-  std::set<void (*)(Event<T>&)> subscribers;
+  std::list<std::function<void(Event<T>&)>> subscribers_;
+//  std::list<typename std::list<std::function<void(Event<T>&)>>::iterator> sources_;
 
   explicit Stream(const Stream &e) = delete;
   void operator=(const Stream &e) = delete;
@@ -101,32 +102,65 @@ class Stream {
 
   Stream(void) = default;
 
-  void subscribe(void (*f)(Event<T>&)) {
-    subscribers.insert(f);
+  auto subscribe(std::function<void(Event<T>&)> f) {
+    return subscribers_.insert(subscribers_.end(), f);
   }
 
-  void unsubscribe(void (*f)(Event<T>&)) {
-    auto it = subscribers.find(f);
-    if (it != subscribers.end()) {
-      subscribers.erase(it);
-    }
+  void unsubscribe(
+      typename std::list<std::function<void(Event<T>&)>>::iterator &it) {
+    subscribers_.erase(it);
+//    subscribers_.
   }
 
   void push(T value) {
-    Event<T> e{value};
-    for (auto s : subscribers) {
+    Event<T> e { value };
+    for (auto s : subscribers_) {
       s(e);
     }
   }
 
   void push(Event<T> &e) {
-//    Event<T> &evt = e;
-    for (auto s : subscribers) {
-      std::cout << "s(" << e.getValue() << ")" << std::endl;
+    for (auto s : subscribers_) {
       s(e);
     }
   }
 
+  unsigned long size(void) {  // unsigned long is a bad idea
+    return static_cast<unsigned long>(subscribers_.size());
+  }
+
 };
+
+/**
+ * Функция создает новый поток из двух исходных потоков,
+ * устанавливая в них обработчики событий
+ */
+template<typename T>
+Stream<T>& join(Stream<T> &s1, Stream<T> &s2) {
+  Stream<T> *ps = new Stream<T>;  // don't delete this!
+  Stream<T> &s = *ps;
+  auto connectStream = [&s](Event<T> &e) -> void {
+    s.push(e);
+  };
+  s1.subscribe(connectStream);
+  s2.subscribe(connectStream);
+  return s;
+}
+
+/**
+ * Argument function returns copy of new event
+ */
+template<typename T_source, typename T_dest>
+Stream<T_dest>& map(Stream<T_source> &s,
+                    std::function<Event<T_dest>(Event<T_source>&)> f) {
+}
+
+/**
+ * Argument function returns reference to new event
+ */
+template<typename T_source, typename T_dest>
+Stream<T_dest>& map(Stream<T_source> &s,
+                    std::function<Event<T_dest>& (Event<T_source>&)> f) {
+}
 }  // namespace reacf
 #endif /* REACTIVE_FRAMEWORK_CPP_H_ */
