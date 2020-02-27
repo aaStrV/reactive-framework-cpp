@@ -13,6 +13,9 @@
  * через разные каналы(например ethernet)
  */
 
+#include <set>
+#include <functional>
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -56,7 +59,7 @@ class Event {
   timeval_t timestamp;
   const T value;
 
-  Event(const Event &e) = delete;
+  explicit Event(const Event &e) = delete;
   void operator=(const Event &e) = delete;
 
  public:
@@ -66,11 +69,11 @@ class Event {
     gettimeofday(&timestamp, NULL);
   }
 
-  timeval_t getTimeStamp(void){
+  timeval_t getTimeStamp(void) {
     return timestamp;
   }
 
-  T getValue(void){
+  T getValue(void) {
     return value;
   }
 };
@@ -86,7 +89,43 @@ class Event {
  *  map
  *  fold
  */
+template<typename T>
 class Stream {
+//  std::set<std::function<void(Event<T>)>> subscribers;
+  std::set<void (*)(Event<T>&)> subscribers;
+
+  explicit Stream(const Stream &e) = delete;
+  void operator=(const Stream &e) = delete;
+
+ public:
+
+  Stream(void) = default;
+
+  void subscribe(void (*f)(Event<T>&)) {
+    subscribers.insert(f);
+  }
+
+  void unsubscribe(void (*f)(Event<T>&)) {
+    auto it = subscribers.find(f);
+    if (it != subscribers.end()) {
+      subscribers.erase(it);
+    }
+  }
+
+  void push(T value) {
+    Event<T> e{value};
+    for (auto s : subscribers) {
+      s(e);
+    }
+  }
+
+  void push(Event<T> &e) {
+//    Event<T> &evt = e;
+    for (auto s : subscribers) {
+      std::cout << "s(" << e.getValue() << ")" << std::endl;
+      s(e);
+    }
+  }
 
 };
 }  // namespace reacf
