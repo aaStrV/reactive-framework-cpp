@@ -1,21 +1,22 @@
 #ifndef REACTIVE_FRAMEWORK_CPP_H_
 #define REACTIVE_FRAMEWORK_CPP_H_
 /**
- * Цель проекта: создание системы реактивных объектов.
+ * Target
+ *    Get a system of reactive objects.
  *
- * Примерный способ применения:
- *  reacf::Property a(0), b(0), result(0);
- *  result = a + b; // result == 0;
- *  a = 10; // result == 10;
- *  b = 20; // result == 30;
+ *    Assume something like this:
+ *      reacf::Property a(0), b(0), result(0);
+ *      result = a + b; // result == 0;
+ *      a = 10; // result == 10;
+ *      b = 20; // result == 30;
  *
- * Объекты системы должны прозрачно передаваться
- * через разные каналы(например ethernet)
+ * Requirements
+ *    - System should support distributed applications development;
  */
-
+//#define DEBUG
 #include <list>
 #include <functional>
-//#include <iterator>
+#include <string>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -55,6 +56,9 @@ typedef timeval timeval_t;
 #endif // _WIN32
 
 namespace reacf {
+/**
+ * 'Event' is read-only message(any type) with a timestamp
+ */
 template<typename T>
 class Event {
   timeval_t timestamp_;
@@ -74,41 +78,89 @@ class Event {
     return timestamp_;
   }
 
-  T getValue(void) {
+  const T& getValue(void) {
     return value_;
   }
 };
 
 /**
- * Методы:
- *  subscribe( fun(event<T> e) ), unSubscribe( fun(event<T> e) ); fun:lambda
- *  push(event<T> e)
+ * 'Stream' is an 'Event' dispetcher
  *
- * Поддерживаемые функции:
- *  Stream<T> &join(Stream<T> &s1, Stream<T> &s2)
- *  filter
- *  map
- *  fold
+ * Methods:
+ *  subscribe:    auto subscribe(std::function<void(Event<T>&)> f)
+ *                auto subscribe(std::function<void(const T&)> f)
+ *  unsubscribe:  void unsubscribe(typename std::list<std::function<void(Event<T>&)>>::iterator &it)
+ *  push:         void push(Event<T> &e)
+ *                void push(T value)
+ *
+ * Supported functions:
+ *  join:   Stream<T> &join(Stream<T> &s1, Stream<T> &s2)
+ *  filter:
+ *  map:    Stream<T_dest>* fmap(Stream<T_source> &s, std::function<T_dest(T_source)> f)
+ *  fold:
+ *
+ *  Event callback format:
+ *    1) std::function<void(Event<T>&)>
+ *       e.g. [&foo](Event<int> &e){foo = e.getValue();}
+ *    2) std::function<void(const T&)>
+ *       e.g. [&foo](const int &i){foo = i;}
+ *
+ * TODO: make destructor for deregistering stream
+ * from 'joined', 'mapped', or 'filtered' streams
  */
 template<typename T>
 class Stream {
   std::list<std::function<void(Event<T>&)>> subscribers_;
 //  std::list<typename std::list<std::function<void(Event<T>&)>>::iterator> sources_;
+  std::string name_;
 
   explicit Stream(const Stream &e) = delete;
   void operator=(const Stream &e) = delete;
 
  public:
 
-  Stream(void) = default;
+  explicit Stream(std::string name = "") {
+#ifdef DEBUG
+    name_ = name;
+#endif
+    subscribers_.clear();
+#ifdef DEBUG
+    std::cout << "New stream created: '" << name_ << "'" << std::endl;
+#endif
+  }
 
   auto subscribe(std::function<void(Event<T>&)> f) {
+#ifdef DEBUG
+    std::cout << "New subscriber in '" << name_ << "'" << std::endl;
+    std::cout << "'" + name_ + "'.size() = " << size()+1 << std::endl;
+#endif
     return subscribers_.insert(subscribers_.end(), f);
+  }
+
+  auto subscribe(std::function<void(const T&)> f) {
+#ifdef DEBUG
+    std::cout << "New subscriber in '" << name_ << "'" << std::endl;
+    std::cout << "'" + name_ + "'.size() = " << size()+1 << std::endl;
+#endif
+    struct wrapper_f : std::function<void(Event<T>&)> {
+      typename std::function<void(const T&)> _f;
+      wrapper_f(std::function<void(const T&)> f) {
+        _f = f;
+      }
+      void operator()(Event<T> &e) {
+        _f(e.getValue());
+      }
+    };
+    return this->subscribe(wrapper_f(f));
   }
 
   void unsubscribe(
       typename std::list<std::function<void(Event<T>&)>>::iterator &it) {
     subscribers_.erase(it);
+#ifdef DEBUG
+    std::cout << "Subscriber gone from '" << name_ << "'" << std::endl;
+    std::cout << "'" + name_ + "'.size() = " << size() << std::endl;
+#endif
 //    subscribers_.
   }
 
@@ -129,38 +181,79 @@ class Stream {
     return static_cast<unsigned long>(subscribers_.size());
   }
 
+#ifdef DEBUG
+  std::string getName() {
+    return name_;
+  }
+#endif
+
 };
 
 /**
- * Функция создает новый поток из двух исходных потоков,
- * устанавливая в них обработчики событий
+ * 'join' make a new stream type A from 2 type A streams
  */
 template<typename T>
-Stream<T>& join(Stream<T> &s1, Stream<T> &s2) {
-  Stream<T> *ps = new Stream<T>;  // don't delete this!
-  Stream<T> &s = *ps;
-  auto connectStream = [&s](Event<T> &e) -> void {
-    s.push(e);
+Stream<T>* join(Stream<T> &s1, Stream<T> &s2) {
+#ifdef DEBUG
+  Stream<T> *result = new Stream<T>(s1.getName() + "+" + s2.getName());  // don't delete this!
+#else
+  Stream<T> *result = new Stream<T>;  // don't delete this!
+#endif
+  auto connectStream = [result](Event<T> &e) -> void {
+    (*result).push(e);
   };
   s1.subscribe(connectStream);
   s2.subscribe(connectStream);
-  return s;
+  return result;
 }
 
 /**
- * Argument function returns copy of new event
+ * 'fmap' reflects source stream, type A, on a new stream, type B.
+ * E.g. Stream<int> -> Stream<bool>. Needs function that convert type A element
+ * to type B element
  */
 template<typename T_source, typename T_dest>
-Stream<T_dest>& map(Stream<T_source> &s,
-                    std::function<Event<T_dest>(Event<T_source>&)> f) {
+Stream<T_dest>* fmap(Stream<T_source> &s, std::function<T_dest(T_source)> f) {
+#ifdef DEBUG
+  Stream<T_dest> *result = new Stream<T_dest>(s.getName() + "->");  // don't delete this!
+#else
+  Stream<T_dest> *result = new Stream<T_dest>;  // don't delete this!
+#endif
+
+  auto convertEvent = [result, f](Event<T_source> &e) -> void {
+    (*result).push(f(e.getValue()));
+  };
+  s.subscribe(convertEvent);
+  return result;
 }
 
 /**
- * Argument function returns reference to new event
+ * 'filter'
  */
-template<typename T_source, typename T_dest>
-Stream<T_dest>& map(Stream<T_source> &s,
-                    std::function<Event<T_dest>& (Event<T_source>&)> f) {
+template<typename T>
+Stream<T>* filter(Stream<T> &s, std::function<bool(T)> f) {
+#ifdef DEBUG
+  Stream<T> *result = new Stream<T>(s.getName() + "|");  // don't delete this!
+#else
+  Stream<T> *result = new Stream<T>;  // don't delete this!
+#endif
+
+  auto filterEvent = [result, f](Event<T> &e) -> void {
+    if (f(e.getValue()) == true) {
+      (*result).push(e.getValue());
+    }
+  };
+  s.subscribe(filterEvent);
+  return result;
 }
+
+/**
+ * 'fold'
+ */
+
+/**
+ * 'Property'
+ */
+
 }  // namespace reacf
 #endif /* REACTIVE_FRAMEWORK_CPP_H_ */
