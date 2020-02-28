@@ -1,5 +1,6 @@
 #include <iostream>
 #include <gtest.h>
+#include <vector>
 #include "reactive-framework-cpp.h"
 using namespace std;
 using namespace reacf;
@@ -103,14 +104,14 @@ TEST(StreamTest, fmap) {
 }
 
 TEST(StreamTest, filter) {
-  function<bool(int)> filterF = [](int i) -> bool {
+  function<bool(const int&)> filterF = [](const int &i) -> bool {
     return i % 2 == 0 ? true : false;
   };
   Stream<int> s1;
   Stream<int> &s2 = *filter(s1, filterF);
 
   int counter = 0;
-  function<void(const int val)> testF = [&counter](int i){
+  function<void(const int val)> testF = [&counter](int i) {
     counter = i;
   };
   s2.subscribe(testF);
@@ -126,7 +127,87 @@ TEST(StreamTest, filter) {
   ASSERT_EQ(2, counter);
   s1.push(11000);
   ASSERT_EQ(11000, counter);
+}
 
+void foldFloatTest(void) {
+  Stream<float> s;
+  float average = 0;
+
+  function<void(const float&, float&)> averageF = [](const float &a,
+                                                     float &acc) -> void {
+    acc = acc * 0.9 + a * 0.1;
+  };
+
+  auto noiseF = [](float level) -> float {
+    float resolution = 1000;
+    return static_cast<float>(rand() % 1000) / (resolution / level) - level / 2;
+  };
+
+  fold(s, averageF, average);
+  for (int i = 0; i < 100; ++i) {
+    s.push(10 + noiseF(2));
+  }
+  ASSERT_NEAR(10, average, 1.01);
+}
+
+TEST(FoldTest, floafToFloat) {
+  {
+    SCOPED_TRACE("fold to float");
+    for (int i = 0; i < 1000; ++i) {
+      foldFloatTest();
+    }
+  }
+}
+
+void foldVectorTest(void) {
+  const int kMaxLen = 10;
+  Stream<float> s;
+  vector<float> v;
+
+  function<void(const float&, vector<float>&)> foldF = [](
+      const float &a, vector<float> &v) -> void {
+    if (v.size() < kMaxLen) {
+      v.push_back(a);
+    } else {
+      v.erase(v.begin());
+      v.push_back(a);
+    }
+  };
+
+  function<float(vector<float>&)> averageF = [](vector<float> &v) {
+    float average = 0;
+    for (auto a : v) {
+      average += a;
+    }
+    return v.size() == 0 ? average : average / v.size();
+  };
+
+  fold(s, foldF, v);
+
+  s.push(1);
+  s.push(10);
+  ASSERT_FLOAT_EQ(5.5, averageF(v));
+
+  for (int i = 0; i < kMaxLen; ++i) {
+    s.push(222.2);
+  }
+  ASSERT_FLOAT_EQ(222.2, averageF(v));
+  ASSERT_EQ(kMaxLen, v.size());
+
+  for (int i = 0; i < kMaxLen; ++i) {
+    s.push(-0.99372);
+  }
+  ASSERT_FLOAT_EQ(-0.99372, averageF(v));
+  ASSERT_EQ(kMaxLen, v.size());
+}
+
+TEST(FoldTest, floatToVector) {
+  {
+    SCOPED_TRACE("fold to vector");
+    for (int i = 0; i < 1000; ++i) {
+      foldVectorTest();
+    }
+  }
 }
 
 int main(int argc, char **argv) {

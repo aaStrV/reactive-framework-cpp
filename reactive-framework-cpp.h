@@ -231,7 +231,7 @@ Stream<T_dest>* fmap(Stream<T_source> &s, std::function<T_dest(T_source)> f) {
  * 'filter'
  */
 template<typename T>
-Stream<T>* filter(Stream<T> &s, std::function<bool(T)> f) {
+Stream<T>* filter(Stream<T> &s, std::function<bool(const T&)> f) {
 #ifdef DEBUG
   Stream<T> *result = new Stream<T>(s.getName() + "|");  // don't delete this!
 #else
@@ -250,6 +250,15 @@ Stream<T>* filter(Stream<T> &s, std::function<bool(T)> f) {
 /**
  * 'fold'
  */
+template<typename T_stream, typename T_acc>
+void fold(Stream<T_stream> &s, std::function<void(const T_stream&, T_acc&)> f,
+          T_acc &acc) {
+
+  auto foldF = [&acc, f](Event<T_stream> &e) {
+    f(e.getValue(), acc);
+  };
+  s.subscribe(foldF);
+}
 
 /**
  * 'Property'
