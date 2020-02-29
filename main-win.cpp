@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
   s1.push(3);
   Event<int> e1(4);
   auto it_f1_1 = s.subscribe(f1);
-  s2.push(e1);
+  s2.set(e1);
 
   return 0;
 }

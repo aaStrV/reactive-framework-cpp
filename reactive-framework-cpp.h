@@ -5,16 +5,19 @@
  *    Get a system of reactive objects.
  *
  *    Assume something like this:
- *      reacf::Property a(0), b(0), result(0);
+ *      reacf::Property a(0), b(0), result(0), c(0);
  *      result = a + b; // result == 0;
  *      a = 10; // result == 10;
- *      b = 20; // result == 30;
+ *      c = a; // c == 10
+ *      b = 20; // result == 30, c == 30;
  *
  * Requirements
  *    - System should support distributed applications development;
  */
 //#define DEBUG
 #include <list>
+#include <map>
+#include <set>
 #include <functional>
 #include <string>
 
@@ -83,6 +86,102 @@ class Event {
   }
 };
 
+template<typename T>
+class Dispetcher {
+ public:
+  using it_t = typename std::list<std::function<void(Event<T>&)>>::iterator;
+  using event_fun_t = std::function<void(Event<T>&)>;
+  using value_fun_t = std::function<void(const T&)>;
+
+ protected:
+  std::list<event_fun_t> subscribers_;
+  std::multimap<Dispetcher*, it_t> targets_;
+  std::set<Dispetcher*> sources_;
+  std::string name_;
+
+  explicit Dispetcher(const Dispetcher &e) = delete;
+  explicit Dispetcher(const Dispetcher &&e) = delete;
+  void operator=(const Dispetcher &e) = delete;
+  void operator=(const Dispetcher &&e) = delete;
+
+  /**
+   * Remove all links on stream s, setted by joins,
+   * mappings, or other functions
+   */
+  void _removeCallBacks(Dispetcher *s) {
+//    std::cout << "_removeCallBacks() in " << this << std::endl;
+    while (true) {
+      auto it = targets_.find(s);
+      if (it != targets_.end()) {
+        it_t fun_it = it->second;
+        unsubscribe(fun_it);
+        targets_.erase(it);
+        continue;
+      }
+
+      // subclibers clean, delete targets
+      if (targets_.erase(s) == 0) {
+        break;
+      }
+    }
+  }
+
+  void _sourceWantRemoveIt(Dispetcher *s) {
+    sources_.erase(s);
+  }
+
+ public:
+  Dispetcher(void) {
+    subscribers_.clear();
+    targets_.clear();
+  }
+
+  /**
+   * Target stream object should save pointers on his sources.
+   * On deleting it say sources to clean it. That means sources
+   * should have multimaps <Stream*, iterator>, and '_removeCallbacks(Stream*)'
+   * method. Target stream call it as '_removeCallbacks(this)'
+   * So, we need Stream._targets:multimap and Stream._sources:multiset
+   */
+  virtual ~Dispetcher(void) {
+    // remove links in source streams
+    for (auto ps : sources_) {
+      ps->_removeCallBacks(this);
+    }
+
+    //remove links in target streams
+    for (auto it = targets_.begin(), end = targets_.end(); it != end; ++it) {
+      it->first->_sourceWantRemoveIt(this);
+    }
+  }
+
+  auto subscribe(event_fun_t f) {
+    return subscribers_.insert(subscribers_.end(), f);
+  }
+
+  auto subscribe(value_fun_t f) {
+    struct wrapper_f : event_fun_t {
+      value_fun_t _f;
+      wrapper_f(value_fun_t f) {
+        _f = f;
+      }
+      void operator()(Event<T> &e) {
+        _f(e.getValue());
+      }
+    };
+    return this->subscribe(wrapper_f(f));
+  }
+
+  void unsubscribe(it_t &it) {
+    subscribers_.erase(it);
+//    subscribers_.
+  }
+
+  unsigned long size(void) {  // unsigned long is a bad idea
+    return static_cast<unsigned long>(subscribers_.size());
+  }
+};
+
 /**
  * 'Stream' is an 'Event' dispetcher
  *
@@ -109,84 +208,40 @@ class Event {
  * from 'joined', 'mapped', or 'filtered' streams
  */
 template<typename T>
-class Stream {
-  std::list<std::function<void(Event<T>&)>> subscribers_;
-//  std::list<typename std::list<std::function<void(Event<T>&)>>::iterator> sources_;
-  std::string name_;
+class Stream : public Dispetcher<T> {
 
-  explicit Stream(const Stream &e) = delete;
-  void operator=(const Stream &e) = delete;
+//  explicit Stream(const Stream &e) = delete;
+//  void operator=(const Stream &e) = delete;
+//  explicit Stream(const Stream &&e) = delete;
+//  void operator=(const Stream &&e) = delete;
 
  public:
-
-  explicit Stream(std::string name = "") {
-#ifdef DEBUG
-    name_ = name;
-#endif
-    subscribers_.clear();
-#ifdef DEBUG
-    std::cout << "New stream created: '" << name_ << "'" << std::endl;
-#endif
+  Stream(void) {
+//    subscribers_.clear();
+//    targets_.clear();
+//    std::cout << this->subscribers_.size() << std::endl;
   }
-
-  auto subscribe(std::function<void(Event<T>&)> f) {
-#ifdef DEBUG
-    std::cout << "New subscriber in '" << name_ << "'" << std::endl;
-    std::cout << "'" + name_ + "'.size() = " << size()+1 << std::endl;
-#endif
-    return subscribers_.insert(subscribers_.end(), f);
-  }
-
-  auto subscribe(std::function<void(const T&)> f) {
-#ifdef DEBUG
-    std::cout << "New subscriber in '" << name_ << "'" << std::endl;
-    std::cout << "'" + name_ + "'.size() = " << size()+1 << std::endl;
-#endif
-    struct wrapper_f : std::function<void(Event<T>&)> {
-      typename std::function<void(const T&)> _f;
-      wrapper_f(std::function<void(const T&)> f) {
-        _f = f;
-      }
-      void operator()(Event<T> &e) {
-        _f(e.getValue());
-      }
-    };
-    return this->subscribe(wrapper_f(f));
-  }
-
-  void unsubscribe(
-      typename std::list<std::function<void(Event<T>&)>>::iterator &it) {
-    subscribers_.erase(it);
-#ifdef DEBUG
-    std::cout << "Subscriber gone from '" << name_ << "'" << std::endl;
-    std::cout << "'" + name_ + "'.size() = " << size() << std::endl;
-#endif
-//    subscribers_.
-  }
+//  virtual ~Stream(void) {
+//  }
 
   void push(T value) {
     Event<T> e { value };
-    for (auto s : subscribers_) {
+    for (auto s : this->subscribers_) {
       s(e);
     }
   }
 
   void push(Event<T> &e) {
-    for (auto s : subscribers_) {
+    for (auto s : this->subscribers_) {
       s(e);
     }
   }
 
-  unsigned long size(void) {  // unsigned long is a bad idea
-    return static_cast<unsigned long>(subscribers_.size());
-  }
-
-#ifdef DEBUG
-  std::string getName() {
-    return name_;
-  }
-#endif
-
+  /**
+   * friend declarations
+   */
+  template<typename T1>
+  friend Stream<T1>* join(Stream<T1> &s1, Stream<T1> &s2);
 };
 
 /**
@@ -194,16 +249,19 @@ class Stream {
  */
 template<typename T>
 Stream<T>* join(Stream<T> &s1, Stream<T> &s2) {
-#ifdef DEBUG
-  Stream<T> *result = new Stream<T>(s1.getName() + "+" + s2.getName());  // don't delete this!
-#else
   Stream<T> *result = new Stream<T>;  // don't delete this!
-#endif
+
   auto connectStream = [result](Event<T> &e) -> void {
     (*result).push(e);
   };
-  s1.subscribe(connectStream);
-  s2.subscribe(connectStream);
+
+  typename Stream<T>::it_t it1 = s1.subscribe(connectStream);
+  typename Stream<T>::it_t it2 = s2.subscribe(connectStream);
+  result->sources_.insert(&s1);
+  s1.targets_.insert(std::make_pair(result, it1));
+  result->sources_.insert(&s2);
+  s2.targets_.insert(std::make_pair(result, it2));
+
   return result;
 }
 
@@ -214,16 +272,16 @@ Stream<T>* join(Stream<T> &s1, Stream<T> &s2) {
  */
 template<typename T_source, typename T_dest>
 Stream<T_dest>* fmap(Stream<T_source> &s, std::function<T_dest(T_source)> f) {
-#ifdef DEBUG
-  Stream<T_dest> *result = new Stream<T_dest>(s.getName() + "->");  // don't delete this!
-#else
   Stream<T_dest> *result = new Stream<T_dest>;  // don't delete this!
-#endif
 
   auto convertEvent = [result, f](Event<T_source> &e) -> void {
     (*result).push(f(e.getValue()));
   };
+
   s.subscribe(convertEvent);
+//  typename Stream<T_source>::it_t it = s.subscribe(convertEvent);
+//  result->sources_.insert(std::make_pair(&s, it));
+
   return result;
 }
 
@@ -232,11 +290,7 @@ Stream<T_dest>* fmap(Stream<T_source> &s, std::function<T_dest(T_source)> f) {
  */
 template<typename T>
 Stream<T>* filter(Stream<T> &s, std::function<bool(const T&)> f) {
-#ifdef DEBUG
-  Stream<T> *result = new Stream<T>(s.getName() + "|");  // don't delete this!
-#else
   Stream<T> *result = new Stream<T>;  // don't delete this!
-#endif
 
   auto filterEvent = [result, f](Event<T> &e) -> void {
     if (f(e.getValue()) == true) {
@@ -262,7 +316,44 @@ void fold(Stream<T_stream> &s, std::function<void(const T_stream&, T_acc&)> f,
 
 /**
  * 'Property'
+ *
+ * Requirements:
+ *  - must be copiable(a = b);
+ *
+ * Methods:
+ *  1) subscribe;   set callback on value changed
+ *  2) unsubscribe: unset callback on value changed;
+ *  3) set :        let subscribers know changes;
+ *
+ * TODO: As there must not be read-only events in
+ * Property, but copiable values propagation, we need
+ * base class Dispetcher for Stream and Property
  */
+template<typename T>
+class Property : Dispetcher<T> {
+  T value_;
+
+ public:
+  Property() = delete;
+  Property(T value)
+      :
+      value_(value) {
+  }
+  Property(Property &value) = delete;
+  Property(Property &&value) = delete;
+  Property &operator()(Property &value) = delete;
+  Property &operator()(Property &&value) = delete;
+  T get(void) {
+    return value_;
+  }
+
+  void set(T v) {
+    Event<T> e { value_ };
+    for (auto s : this->subscribers_) {
+      s(v);
+    }
+  }
+};
 
 }  // namespace reacf
 #endif /* REACTIVE_FRAMEWORK_CPP_H_ */

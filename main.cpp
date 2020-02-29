@@ -15,7 +15,7 @@ TEST(StreamTest, base) {
   Stream<int> s1_test;
   ASSERT_EQ(0, s1_test.size());
   int counter = 0;
-  auto f1_test = [&counter](Event<int> &e) -> void {
+  Stream<int>::event_fun_t f1_test = [&counter](Event<int> &e) -> void {
     counter += 1;
   };
   auto it_f1 = s1_test.subscribe(f1_test);
@@ -44,6 +44,48 @@ TEST(StreamTest, base) {
   auto f2_it_2 = s1_test.subscribe(f2_test);
   s1_test.push(20);
   ASSERT_EQ(20, counter);
+}
+
+TEST(StreamTest, destructor) {
+  auto printF = [](const int &i) {
+    cout << "Event(" << i << ")" << endl;
+  };
+  int counter = 0;
+  auto counterF = [&counter](const int &i) {
+    counter = i;
+  };
+
+  Stream<int> *ps1 = new Stream<int>();
+  Stream<int> *ps2 = new Stream<int>();
+  Stream<int> *ps3 = join(*ps1, *ps2);
+  ASSERT_EQ(1, ps1->size());
+  ASSERT_EQ(1, ps2->size());
+  ASSERT_EQ(0, ps3->size());
+
+  ps3->subscribe(counterF);
+  ASSERT_EQ(1, ps3->size());
+
+  ps1->push(1);
+  ps2->push(2);
+  ps3->push(3);
+  ASSERT_EQ(3, counter);
+
+  delete(ps3);
+  ps3 = nullptr;
+  ASSERT_EQ(0, ps1->size());
+  ASSERT_EQ(0, ps2->size());
+  ps1->push(4);
+  ps2->push(5);
+  ASSERT_EQ(3, counter);
+
+  ps3 = join(*ps1, *ps2);
+  ASSERT_EQ(1, ps1->size());
+  ASSERT_EQ(1, ps2->size());
+
+  delete(ps3);
+  ps3 = nullptr;
+  ASSERT_EQ(0, ps1->size());
+  ASSERT_EQ(0, ps2->size());
 }
 
 TEST(StreamTest, join) {
@@ -90,7 +132,7 @@ TEST(StreamTest, fmap) {
   auto test = [&foo](Event<float> &e) -> void {
     foo = e.getValue();
   };
-  Stream<int> s_int("s_int");
+  Stream<int> s_int;
   s_int.push(1);
   Stream<float> &s_float = *fmap(s_int, intDiv2);
   s_float.subscribe(test);
@@ -153,7 +195,7 @@ void foldFloatTest(void) {
 TEST(FoldTest, floafToFloat) {
   {
     SCOPED_TRACE("fold to float");
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 2; ++i) {
       foldFloatTest();
     }
   }
@@ -204,44 +246,44 @@ void foldVectorTest(void) {
 TEST(FoldTest, floatToVector) {
   {
     SCOPED_TRACE("fold to vector");
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 2; ++i) {
       foldVectorTest();
     }
   }
 }
 
 int main(int argc, char **argv) {
-  cout << "Started" << endl;
-  function<float(int)> int2float = [](int i) -> float {
-    return static_cast<float>(i);
-  };
-
-  Stream<int> s1("s1");
-  Stream<int> s2("s2");
-  Stream<int> &s = *join(s1, s2);
-
-  auto f1 = [](Event<int> &e) -> void {
-    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
-    cout << "f1(): New event: value = " << e.getValue() << endl;
-  };
-  auto f2 = [](Event<int> &e) -> void {
-    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
-    cout << "f2(): New event: value = " << e.getValue() << endl;
-  };
-  auto it_f1_0 = s.subscribe([](Event<int> &e) -> void {
-    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
-    cout << "f1(): New event: value = " << e.getValue() << endl;
-  });
-  s.subscribe(f2);
-
-  s1.push(1);
-  s2.push(2);
-  s.unsubscribe(it_f1_0);
-  Stream<float> &sf = *fmap(s, int2float);
-  s1.push(3);
-  Event<int> e1(4);
-  auto it_f1_1 = s.subscribe(f1);
-  s2.push(e1);
+//  cout << "Started" << endl;
+//  function<float(int)> int2float = [](int i) -> float {
+//    return static_cast<float>(i);
+//  };
+//
+//  Stream<int> s1;
+//  Stream<int> s2;
+//  Stream<int> &s = *join(s1, s2);
+//
+//  auto f1 = [](Event<int> &e) -> void {
+//    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
+//    cout << "f1(): New event: value = " << e.getValue() << endl;
+//  };
+//  auto f2 = [](Event<int> &e) -> void {
+//    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
+//    cout << "f2(): New event: value = " << e.getValue() << endl;
+//  };
+//  auto it_f1_0 = s.subscribe([](Event<int> &e) -> void {
+//    cout << e.getTimeStamp().tv_sec << "." << e.getTimeStamp().tv_usec << ": ";
+//    cout << "f1(): New event: value = " << e.getValue() << endl;
+//  });
+//  s.subscribe(f2);
+//
+//  s1.set(1);
+//  s2.set(2);
+//  s.unsubscribe(it_f1_0);
+//  Stream<float> &sf = *fmap(s, int2float);
+//  s1.set(3);
+//  Event<int> e1(4);
+//  auto it_f1_1 = s.subscribe(f1);
+//  s2.set(e1);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
