@@ -35,13 +35,13 @@ TEST(StreamTest, base) {
   auto f2_test = [&counter](const int &val) {
     counter = val;
   };
-  auto f2_it = s1_test.subscribe(f2_test);
+  Stream<int>::it_t f2_it = s1_test.subscribe(f2_test);
   s1_test.push(10);
   ASSERT_EQ(10, counter);
   s1_test.unsubscribe(f2_it);
   s1_test.push(11);
   ASSERT_EQ(10, counter);
-  auto f2_it_2 = s1_test.subscribe(f2_test);
+  Stream<int>::it_t f2_it_2 = s1_test.subscribe(f2_test);
   s1_test.push(20);
   ASSERT_EQ(20, counter);
 }
