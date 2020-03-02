@@ -1,13 +1,9 @@
-/*
- * Stream.h
- *
- *  Created on: 29 февр. 2020 г.
- *      Author: sergius
- */
-
 #ifndef STREAM_H_
 #define STREAM_H_
+
+#include "Observable.h"
 #include "Event.h"
+#include "defines.h"
 #include "Dispetcher.h"
 
 namespace reacf {
@@ -37,7 +33,7 @@ namespace reacf {
  * from 'joined', 'mapped', or 'filtered' streams
  */
 template<typename T>
-class Stream : public Dispetcher<Event<T>> {
+class ___Stream : public ___Dispetcher<Event<T>> {
 
 //  explicit Stream(const Stream &e) = delete;
 //  void operator=(const Stream &e) = delete;
@@ -46,23 +42,23 @@ class Stream : public Dispetcher<Event<T>> {
 
  public:
   using fun_t = std::function<void(const T&)>;
-  using event_fun_t = typename Dispetcher<Event<T>>::fun_t;
+  using event_fun_t = typename ___Dispetcher<Event<T>>::fun_t;
 
   auto subscribe(fun_t f) {
-    struct wrapper_f : Dispetcher<Event<T>>::fun_t {
-      Stream::fun_t _f;
-      wrapper_f(Stream::fun_t f) {
+    struct wrapper_f : ___Dispetcher<Event<T>>::fun_t {
+      ___Stream ::fun_t _f;
+      wrapper_f(___Stream ::fun_t f) {
         _f = f;
       }
       void operator()(Event<T> &e) {
         _f(e.getValue());
       }
     };
-    return Dispetcher<Event<T>>::subscribe(wrapper_f(f));
+    return ___Dispetcher<Event<T>>::subscribe(wrapper_f(f));
   }
 
   auto subscribe(event_fun_t f) {
-    return Dispetcher<Event<T>>::subscribe(f);
+    return ___Dispetcher<Event<T>>::subscribe(f);
   }
 
   void push(T value) {
@@ -82,7 +78,124 @@ class Stream : public Dispetcher<Event<T>> {
    * friend declarations
    */
   template<typename T1>
-  friend Stream<T1>* join(Stream<T1> &s1, Stream<T1> &s2);
+  friend ___Stream <T1>* ___join(___Stream <T1> &s1, ___Stream <T1> &s2);
+};
+
+template<typename T>
+class Stream : public Dispetcher<Event<T>&> {
+ private:
+
+ public:
+  using fun_t = std::function<void(const T&)>;
+  using event_fun_t = typename Dispetcher<Event<T>&>::fun_t;
+
+  virtual Observable* subscribe(fun_t f) {
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINTLN("/subscribe(fun_t)");
+    struct wrapper_f : event_fun_t {
+      fun_t _f;
+      wrapper_f(fun_t f) {
+        _f = f;
+      }
+      void operator()(Event<T> &e) {
+        _f(e.getValue());
+      }
+    };
+    return Dispetcher<Event<T>&>::subscribe(wrapper_f(f));
+  }
+
+  virtual Observable* subscribe(event_fun_t f) {
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINTLN("/subscribe(event_fun_t)");
+    return Dispetcher<Event<T>&>::subscribe(f);
+  }
+
+  void pushReference(T &value) {
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINT("/pushReference(T &): new event, value = ");
+    DDDPRINTLN(value);
+    Event<T> e { value };
+    publishReference(e);
+  }
+
+  void push(T value) {
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINT("/push(T value): new event, value = ");
+    DDDPRINTLN(value);
+    Event<T> e { value };
+    this->publishReference(e);
+  }
+
+  void push(Event<T> &e) {
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINT("/push(Event<T> &): new event, value = ");
+    DDDPRINTLN(e.getValue());
+    this->publishReference(e);
+  }
+
+  Stream<T>* join(Stream<T> &s) {
+    // TODO: what if s.join(s)? Needed tests
+
+    Stream<T> *new_stream = new Stream<T>;
+
+    event_fun_t callbackForThisStream = [new_stream, this](Event<T> &e) {
+      DDDPRINT("Stream ");
+      DDDPRINT(this);
+      DDDPRINT("/join(Stream<T> &)/callbackF: new event, value = ");
+      DDDPRINTLN(e.getValue());
+      new_stream->push(e);
+    };
+
+    event_fun_t callbackForArgStream = [new_stream, &s](Event<T> &e) {
+      DDDPRINT("Stream ");
+      DDDPRINT(&s);
+      DDDPRINT("/join(Stream<T> &)/callbackF: new event, value = ");
+      DDDPRINTLN(e.getValue());
+      new_stream->push(e);
+    };  // equivalent of callbackForThisStream, needed only for debug
+
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINTLN("/join(Stream<T> &): subscribing new callback");
+    Observable *p_this = this->subscribe(callbackForThisStream);
+    p_this->addObserver(new_stream);
+    new_stream->addObservable(p_this);
+
+    Observable *p_s = s.subscribe(callbackForArgStream);
+    p_s->addObserver(new_stream);
+    new_stream->addObservable(p_s);
+
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINTLN("/join(Stream<T> &): subscribed new callback");
+    DDDPRINT("Stream ");
+    DDDPRINT(this);
+    DDDPRINT("/join(Stream<T> &): there are ");
+    DDDPRINT(new_stream->observersSize());
+    DDDPRINTLN(" observers now");
+    return new_stream;
+  }
+
+  Stream<T>* filter(std::function<bool(T)> f) {
+    Stream<T> *new_stream = new Stream<T>;
+
+    event_fun_t filterF = [new_stream, f](Event<T> &e) {
+      if (f(e.getValue()) == true) {
+        new_stream->publishReference(e);
+      }
+    };
+
+    auto p = this->subscribe(filterF);
+    p->addObserver(new_stream);
+    new_stream->addObservable(p);
+
+    return new_stream;
+  }
 };
 }  // namespace reacf
 

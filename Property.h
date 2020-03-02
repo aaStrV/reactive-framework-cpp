@@ -1,10 +1,3 @@
-/*
- * Property.h
- *
- *  Created on: 29 февр. 2020 г.
- *      Author: sergius
- */
-
 #ifndef PROPERTY_H_
 #define PROPERTY_H_
 #include "Dispetcher.h"
@@ -26,7 +19,7 @@ namespace reacf {
  * base class Dispetcher for Stream and Property
  */
 template<typename T>
-class Property : Dispetcher<T> {
+class Property : ___Dispetcher<T> {
   T value_;
 
  public:
