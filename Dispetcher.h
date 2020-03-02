@@ -131,39 +131,21 @@ class Dispetcher : public Observable {
  public:
   using fun_t = std::function<void(T)>;
   virtual ~Dispetcher() {
-    DDDPRINT("~dispetcher_t(): ");
-    DDDPRINT(this);
-    DDDPRINTLN(", started");
 
     // clean observables
     for (Observable *observable_fun : observables_) {
-      DDDPRINT("~dispetcher_t(): ");
-      DDDPRINT(this);
-      DDDPRINT(", deleting observable function ");
-      DDDPRINTLN(observable_fun);
       observable_fun->removeObserver(this);
       delete observable_fun;
     }
 
     // clean observers
     for (Observable *observer_fun : observers_) {
-      DDDPRINT("~dispetcher_t(): ");
-      DDDPRINT(this);
-      DDDPRINT(", deleting observer function ");
-      DDDPRINTLN(observer_fun);
       observer_fun->removeObservable(this);
       delete observer_fun;
     }
-
-    DDDPRINT("~dispetcher_t(): ");
-    DDDPRINT(this);
-    DDDPRINTLN(", finished");
   }
 
   virtual Observable* subscribe(std::function<void(T)> f) {
-    DDDPRINT("Dispetcher ");
-    DDDPRINT(this);
-    DDDPRINTLN("/subscribe(std::function<void(T)>)");
     Observer<void, T> *wrapF = new Observer<void, T>(f);  // delete in unsubscribe()
 
     wrapF->addObservable(this);
@@ -179,31 +161,13 @@ class Dispetcher : public Observable {
   }
 
   void publish(T a) {
-    DDDPRINT("Dispetcher ");
-    DDDPRINT(this);
-    DDDPRINT("/publish(T): there a ");
-    DDDPRINT(observers_.size());
-    DDPRINTLN(" observers");
     for (auto o : observers_) {
-      DDDPRINT("Dispetcher ");
-      DDDPRINT(this);
-      DDDPRINT("/publish(T)/observer ");
-      DDDPRINTLN(o);
       (*((Observer<void, T>*) o))(a);
     }
   }
 
   void publishReference(T &a) {
-    DDDPRINT("Dispetcher ");
-    DDDPRINT(this);
-    DDDPRINT("/publishReference(T &): there a ");
-    DDDPRINT(observers_.size());
-    DDDPRINTLN(" observers");
     for (auto o : observers_) {
-      DDDPRINT("Dispetcher ");
-      DDDPRINT(this);
-      DDDPRINT("/publish(T &)/observer ");
-      DDDPRINTLN(o);
       (*((Observer<void, T>*) o))(a);
     }
   }

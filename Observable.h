@@ -22,11 +22,9 @@ class Observable {
 
  public:
   Observable() {
-    DDDPRINT("Observable(): ");DDDPRINTLN(this);
   }
   ;
   virtual ~Observable() {
-    DDDPRINT("~Observable(): ");DDDPRINTLN(this);
   }
 
 //  virtual void removeFromObservables(void);
@@ -61,7 +59,6 @@ class Observer : public Observable {
 
  public:
   virtual ~Observer() {
-    DDDPRINT("~func_t(): ");DDDPRINTLN(this);
 //    this->removeObserver(this);
 //    this->removeObservable(this);
 //    delete (&f_);  // TODO: need it? Seems not - falls "free(): invalid pointer"
@@ -75,7 +72,6 @@ class Observer : public Observable {
   }
 
   Dest operator()(Source a) {
-    DDDPRINT("observers_: ");DDDPRINTLN(observers_.size());DDDPRINT("observables_: ");DDDPRINTLN(observables_.size());
     return f_(a);
   }
 

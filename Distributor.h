@@ -25,8 +25,7 @@ class Arrow {
     if (dom != nullptr) {
       addOut(dom, this);
     }
-    DDPRINT(this);
-    DDPRINTLN(":Arrow");
+    DDPRINT(this);DDPRINTLN(":Arrow");
   }
   virtual ~Arrow(void) {
     if (dom != nullptr) {
@@ -36,9 +35,25 @@ class Arrow {
       removeIn(codom, this);
     }
 
-    DDPRINT(this);
-    DDPRINTLN(":~Arrow");
+    DDPRINT(this);DDPRINTLN(":~Arrow");
   }
+
+  Object* getDom(void){
+    return dom;
+  }
+
+  Object* getCodom(void){
+    return codom;
+  }
+
+  virtual void apply(void*) {
+    DDPRINT(this);DDPRINTLN(":Arrow:apply");
+  }
+
+  virtual void* retrieve(void) {
+    return nullptr;
+  }
+
   friend void addIn(Object *o, Arrow *a);
   friend void addOut(Object *o, Arrow *a);
   friend void removeIn(Object *o, Arrow *a);
@@ -52,8 +67,7 @@ class Object {
 
  public:
   Object() {
-    DDPRINT(this);
-    DDPRINTLN(":Object");
+    DDPRINT(this);DDPRINTLN(":Object");
   }
   virtual ~Object() {
     DDPRINT(this);
@@ -85,9 +99,19 @@ class Object {
       DDPRINTLN(a);
       delete a;
     }
-    DDPRINT(this);
-    DDPRINTLN(":~Object finished");
+    DDPRINT(this);DDPRINTLN(":~Object finished");
   }
+
+  bool hasIn(Arrow* a) {
+    return in_.find(a) == in_.end()? false: true;
+  }
+
+  bool hasOut(Arrow* a) {
+    return out_.find(a) == out_.end()? false: true;
+  }
+
+  virtual void distribute(Arrow *a) {}
+
   friend Arrow::~Arrow(void);
   friend void addIn(Object *o, Arrow *a);
   friend void addOut(Object *o, Arrow *a);
@@ -96,18 +120,36 @@ class Object {
 };
 
 void addIn(Object *o, Arrow *a) {
+  DDPRINT(o);
+  DDPRINT(":addIn adding input ");
+  DDPRINTLN(a);
   o->in_.insert(a);
 }
 void addOut(Object *o, Arrow *a) {
+  DDPRINT(o);
+  DDPRINT(":addIn adding output ");
+  DDPRINTLN(a);
   o->out_.insert(a);
 }
 void removeIn(Object *o, Arrow *a) {
+  DDPRINT(o);
+  DDPRINT(":addIn removing input ");
+  DDPRINTLN(a);
   o->in_.erase(a);
 }
 void removeOut(Object *o, Arrow *a) {
+  DDPRINT(o);
+  DDPRINT(":addIn removing output ");
+  DDPRINTLN(a);
   o->out_.erase(a);
 }
 
+/**
+ * Morphism lifetime
+ *  - Creating: in fmap, filter, subscribe or other functor
+ *  - Calling: on publish method from dispetcher
+ *  - Deleting: on domain or codomain deletion
+ */
 template<typename Dest, typename Source>
 class Morphism : Arrow {
  public:
@@ -115,24 +157,42 @@ class Morphism : Arrow {
 
  private:
   fun_t f_;
+  Dest result_;
 
  public:
+  using dom_t = Source;
+  using codom_t = Dest;
+
   Morphism(Object *dom, Object *codom, fun_t f)
       :
       Arrow(dom, codom),
       f_(f) {
-    DDPRINT(this);
-    DDPRINTLN(":Morphism");
+    DDPRINT(this);DDPRINTLN(":Morphism");
   }
   virtual ~Morphism() {
-    DDPRINT(this);
-    DDPRINTLN(":~Morphism (nothing to do)");
+    DDPRINT(this);DDPRINTLN(":~Morphism");
   }
-  Dest operator()(Source a) {
-    DDPRINT(this);
-    DDPRINTLN(":Morphism:operator()");
-    f_(a);
+//  Dest operator()(Source a) {
+//    DDPRINT(this);
+//    DDPRINTLN(":Morphism:operator()");
+//    return f_(a);
+//  }
+
+  virtual void* retrieve(void) {
+    return &result_;
   }
+
+  virtual void apply(void *a) {
+    DDPRINT(this);
+    DDPRINTLN(":Morphism:apply");
+    result_ = f_(*((Source*) a));
+  }
+};
+
+class Terminal {
+};
+
+class Initial {
 };
 
 template<typename T>
@@ -147,16 +207,34 @@ class Distributor : public reacf::Object {
     DPRINT(this);
     DPRINTLN(":fmap");
     Distributor<Dest> *new_dispetcher = new Distributor<Dest>;
-    Morphism<Dest, T> m(new_dispetcher, this, f);
+    Morphism<Dest, T> *m = new Morphism<Dest, T>(this, new_dispetcher, f);
     return new_dispetcher;
   }
 
-  Object* subscribe(fun_t f) {
+  Distributor<T>* filter(std::function<bool(T)> f, T placeholder) {
+    DPRINT(this);
+    DPRINTLN(":filter");
+    Distributor<T> *new_dispetcher = new Distributor<T>;
+    std::function<T(T)> filterF = [placeholder, f](T a) {
+      DPRINT("filter:filterF: ");
+      DPRINTLN(a);
+      return f(a) == true ? a : placeholder;
+    };
+    Morphism<T, T> *m = new Morphism<T, T>(this, new_dispetcher, filterF);
+    return new_dispetcher;
+  }
+
+  Distributor<Terminal>* subscribe(std::function<void(T)> f) {
     DPRINT(this);
     DPRINTLN(":subscribe");
-    Object *new_object = new Object;
-    Morphism<void, T> *m = new Morphism<void, T>(this, new_object, f);
-    return new_object;
+    std::function<Terminal(T)> terminalF = [f](T value) {
+      f(value);
+      return Terminal();
+    };
+    Distributor<Terminal> *new_dispetcher = new Distributor<Terminal>;
+    Morphism<Terminal, T> *m = new Morphism<Terminal, T>(this, new_dispetcher,
+                                                         terminalF);
+    return new_dispetcher;
   }
 
   void unsubscribe(Object *o) {
@@ -165,13 +243,15 @@ class Distributor : public reacf::Object {
     delete o;
   }
 
+//  template<typename Dest>
   void publish(T value) {
     DDPRINT(this);
     DDPRINTLN(":publish");
     for (reacf::Arrow *a : out_) {
       DDDPRINT(this);
       DDDPRINTLN(":publish:for: publishing");
-      (*((reacf::Morphism<void, T>*) a))(value);
+      a->apply((void*) &value);
+      a->getCodom()->distribute(a);
     }
   }
 
@@ -179,7 +259,18 @@ class Distributor : public reacf::Object {
     DDPRINT(this);
     DDPRINTLN(":publishRef");
     for (reacf::Arrow *a : out_) {
-      (*((reacf::Morphism<void, T>*) a))(value);
+      DDDPRINT(this);
+      DDDPRINTLN(":publishRef:for: publishing");
+      a->apply((void*) &value);
+      a->getCodom()->distribute(a);
+    }
+  }
+  virtual void distribute(Arrow *a) {
+    if (hasIn(a)) {
+      T &tmp_val = *(T*) (a->retrieve());
+      publishRef(tmp_val);
+    } else {
+      return;
     }
   }
 };

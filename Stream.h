@@ -90,9 +90,6 @@ class Stream : public Dispetcher<Event<T>&> {
   using event_fun_t = typename Dispetcher<Event<T>&>::fun_t;
 
   virtual Observable* subscribe(fun_t f) {
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINTLN("/subscribe(fun_t)");
     struct wrapper_f : event_fun_t {
       fun_t _f;
       wrapper_f(fun_t f) {
@@ -106,35 +103,20 @@ class Stream : public Dispetcher<Event<T>&> {
   }
 
   virtual Observable* subscribe(event_fun_t f) {
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINTLN("/subscribe(event_fun_t)");
     return Dispetcher<Event<T>&>::subscribe(f);
   }
 
   void pushReference(T &value) {
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINT("/pushReference(T &): new event, value = ");
-    DDDPRINTLN(value);
     Event<T> e { value };
     publishReference(e);
   }
 
   void push(T value) {
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINT("/push(T value): new event, value = ");
-    DDDPRINTLN(value);
     Event<T> e { value };
     this->publishReference(e);
   }
 
   void push(Event<T> &e) {
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINT("/push(Event<T> &): new event, value = ");
-    DDDPRINTLN(e.getValue());
     this->publishReference(e);
   }
 
@@ -144,24 +126,12 @@ class Stream : public Dispetcher<Event<T>&> {
     Stream<T> *new_stream = new Stream<T>;
 
     event_fun_t callbackForThisStream = [new_stream, this](Event<T> &e) {
-      DDDPRINT("Stream ");
-      DDDPRINT(this);
-      DDDPRINT("/join(Stream<T> &)/callbackF: new event, value = ");
-      DDDPRINTLN(e.getValue());
       new_stream->push(e);
     };
 
     event_fun_t callbackForArgStream = [new_stream, &s](Event<T> &e) {
-      DDDPRINT("Stream ");
-      DDDPRINT(&s);
-      DDDPRINT("/join(Stream<T> &)/callbackF: new event, value = ");
-      DDDPRINTLN(e.getValue());
       new_stream->push(e);
     };  // equivalent of callbackForThisStream, needed only for debug
-
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINTLN("/join(Stream<T> &): subscribing new callback");
     Observable *p_this = this->subscribe(callbackForThisStream);
     p_this->addObserver(new_stream);
     new_stream->addObservable(p_this);
@@ -170,14 +140,6 @@ class Stream : public Dispetcher<Event<T>&> {
     p_s->addObserver(new_stream);
     new_stream->addObservable(p_s);
 
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINTLN("/join(Stream<T> &): subscribed new callback");
-    DDDPRINT("Stream ");
-    DDDPRINT(this);
-    DDDPRINT("/join(Stream<T> &): there are ");
-    DDDPRINT(new_stream->observersSize());
-    DDDPRINTLN(" observers now");
     return new_stream;
   }
 
