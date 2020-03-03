@@ -15,6 +15,8 @@ class Arrow {
   Object *codom;
 
  public:
+  static int count;
+
   Arrow(Object *dom, Object *codom)
       :
       dom(dom),
@@ -25,7 +27,10 @@ class Arrow {
     if (dom != nullptr) {
       addOut(dom, this);
     }
-    DDPRINT(this);DDPRINTLN(":Arrow");
+
+    count += 1;
+    DDDPRINT(this);
+    DDDPRINT(":Arrow(), count = ");DDDPRINTLN(count);
   }
   virtual ~Arrow(void) {
     if (dom != nullptr) {
@@ -35,14 +40,16 @@ class Arrow {
       removeIn(codom, this);
     }
 
-    DDPRINT(this);DDPRINTLN(":~Arrow");
+    count -= 1;
+    DDDPRINT(this);
+    DDDPRINT(":~Arrow(), count = ");DDDPRINTLN(count);
   }
 
-  Object* getDom(void){
+  Object* getDom(void) {
     return dom;
   }
 
-  Object* getCodom(void){
+  Object* getCodom(void) {
     return codom;
   }
 
@@ -60,16 +67,26 @@ class Arrow {
   friend void removeOut(Object *o, Arrow *a);
 };
 
+int Arrow::count = 0;
+
 class Object {
  protected:
   std::set<Arrow*> in_;
   std::set<Arrow*> out_;
 
  public:
+  static int count;
+
   Object() {
-    DDPRINT(this);DDPRINTLN(":Object");
+    count += 1;
+    DDDPRINT(this);
+    DDDPRINT(":Object(), count = ");DDDPRINTLN(count);
   }
   virtual ~Object() {
+    count -= 1;
+    DDDPRINT(this);
+    DDDPRINT(":~Object(), count = ");
+    DDDPRINTLN(count);
     DDPRINT(this);
     DDPRINT(":~Object there are ");
     DDPRINT(in_.size());
@@ -80,9 +97,13 @@ class Object {
       }
       Arrow *a = *(in_.begin());
       DDPRINT(this);
-      DDPRINT(":~Object deleting output ");
+      DDPRINT(":~Object deleting input ");
       DDPRINTLN(a);
+      Object *dom = a->getDom();
+      DDPRINT("dom = ");
+      DDPRINTLN(dom);
       delete a;
+//      check(dom);
     }
 
     DDPRINT(this);
@@ -97,61 +118,80 @@ class Object {
       DDPRINT(this);
       DDPRINT(":~Object deleting output ");
       DDPRINTLN(a);
+      Object *codom = a->getCodom();
+      DDPRINT("codom = ");
+      DDPRINTLN(codom);
       delete a;
+//      check(codom);
     }
     DDPRINT(this);DDPRINTLN(":~Object finished");
   }
 
-  bool hasIn(Arrow* a) {
-    return in_.find(a) == in_.end()? false: true;
+  bool hasIn(Arrow *a) {
+    return in_.find(a) == in_.end() ? false : true;
   }
 
-  bool hasOut(Arrow* a) {
-    return out_.find(a) == out_.end()? false: true;
+  bool hasOut(Arrow *a) {
+    return out_.find(a) == out_.end() ? false : true;
   }
 
-  virtual void distribute(Arrow *a) {}
+  virtual void addIn(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":addIn adding input ");
+    DDPRINTLN(a);
+    this->in_.insert(a);
+  }
+
+  virtual void addOut(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":addOut adding output ");
+    DDPRINTLN(a);
+    this->out_.insert(a);
+  }
+
+  virtual void removeIn(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":removeIn removing input ");
+    DDPRINTLN(a);
+    this->in_.erase(a);
+  }
+
+  virtual void removeOut(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":removeOut removing output ");
+    DDPRINTLN(a);
+    this->out_.erase(a);
+  }
+
+  virtual void distribute(Arrow *a) {
+  }
 
   friend Arrow::~Arrow(void);
-  friend void addIn(Object *o, Arrow *a);
-  friend void addOut(Object *o, Arrow *a);
-  friend void removeIn(Object *o, Arrow *a);
-  friend void removeOut(Object *o, Arrow *a);
 };
 
+int Object::count = 0;
+
 void addIn(Object *o, Arrow *a) {
-  DDPRINT(o);
-  DDPRINT(":addIn adding input ");
-  DDPRINTLN(a);
-  o->in_.insert(a);
+  o->addIn(a);
 }
 void addOut(Object *o, Arrow *a) {
-  DDPRINT(o);
-  DDPRINT(":addIn adding output ");
-  DDPRINTLN(a);
-  o->out_.insert(a);
+  o->addOut(a);
 }
 void removeIn(Object *o, Arrow *a) {
-  DDPRINT(o);
-  DDPRINT(":addIn removing input ");
-  DDPRINTLN(a);
-  o->in_.erase(a);
+  o->removeIn(a);
 }
 void removeOut(Object *o, Arrow *a) {
-  DDPRINT(o);
-  DDPRINT(":addIn removing output ");
-  DDPRINTLN(a);
-  o->out_.erase(a);
+  o->removeOut(a);
 }
 
 /**
  * Morphism lifetime
  *  - Creating: in fmap, filter, subscribe or other functor
  *  - Calling: on publish method from dispetcher
- *  - Deleting: on domain or codomain deletion
+ *  - Deleting: on domain or codomain deletion, on unsubscribe
  */
 template<typename Dest, typename Source>
-class Morphism : Arrow {
+class Morphism : public Arrow {
  public:
   typedef std::function<Dest(Source)> fun_t;
 
@@ -183,22 +223,88 @@ class Morphism : Arrow {
   }
 
   virtual void apply(void *a) {
-    DDPRINT(this);
-    DDPRINTLN(":Morphism:apply");
+    DDDPRINT(this);
+    DDDPRINTLN(":Morphism:apply");
     result_ = f_(*((Source*) a));
   }
 };
 
-class Terminal {
+/**
+ * Terminal lifetime
+ *  - Creating: in subscribe function
+ *  - Calling: never
+ *  - Deleting: kill itself on removing input
+ */
+class Terminal : public Object {
+ public:
+  using terminal_t = int;
+
+  static int count;
+
+ public:
+  Terminal() {
+    count += 1;
+    DDDPRINT(this);
+    DDDPRINT(":Terminal(), count = ");DDDPRINTLN(count);
+  }
+
+  ~Terminal() {
+    count -= 1;
+    DDDPRINT(this);
+    DDDPRINT(":~Terminal(), count = ");DDDPRINTLN(count);
+  }
+
+  virtual void addIn(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":addIn, terminal, do nothing with ");
+    DDPRINTLN(a);
+  }
+
+  virtual void addOut(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":addOut, terminal, do nothing with ");
+    DDPRINTLN(a);
+  }
+
+  virtual void removeIn(Arrow *a) {
+    DDPRINT(this);
+    DDPRINTLN(":removeIn, terminal, deleting");
+    delete this;
+  }
+
+  virtual void removeOut(Arrow *a) {
+    DDPRINT(this);
+    DDPRINT(":removeOut, terminal, do nothing with ");
+    DDPRINTLN(a);
+  }
 };
 
 class Initial {
+ public:
+  static int count;
+ public:
+  Initial() {
+    count += 1;
+    DDDPRINT(this);
+    DDDPRINT(":Initial(), count = ");DDDPRINTLN(count);
+  }
+
+  ~Initial() {
+    count -= 1;
+    DDDPRINT(this);
+    DDDPRINT(":~Initial(), count = ");DDDPRINTLN(count);
+  }
 };
+
+int Terminal::count = 0;
+int Initial::count = 0;
 
 template<typename T>
 class Distributor : public reacf::Object {
  public:
   typedef std::function<void(T)> fun_t;
+  static int count;
+
   virtual ~Distributor() {
   }
 
@@ -224,23 +330,23 @@ class Distributor : public reacf::Object {
     return new_dispetcher;
   }
 
-  Distributor<Terminal>* subscribe(std::function<void(T)> f) {
+  Arrow* subscribe(std::function<void(T)> f) {
     DPRINT(this);
     DPRINTLN(":subscribe");
-    std::function<Terminal(T)> terminalF = [f](T value) {
+    std::function<Terminal::terminal_t(T)> terminalF = [f](T value) {
       f(value);
-      return Terminal();
+      return Terminal::terminal_t(0);
     };
-    Distributor<Terminal> *new_dispetcher = new Distributor<Terminal>;
-    Morphism<Terminal, T> *m = new Morphism<Terminal, T>(this, new_dispetcher,
-                                                         terminalF);
-    return new_dispetcher;
+    Terminal *new_terminal = new Terminal;
+    Arrow *m = new Morphism<Terminal::terminal_t, T>(this, new_terminal,
+                                                     terminalF);
+    return m;
   }
 
-  void unsubscribe(Object *o) {
+  void unsubscribe(Arrow *a) {
     DPRINT(this);
     DPRINTLN(":unsubscribe");
-    delete o;
+    delete a;
   }
 
 //  template<typename Dest>

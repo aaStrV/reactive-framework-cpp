@@ -26,6 +26,8 @@ TEST(DistributorTest, general) {
   ASSERT_EQ(165, icount);
 
   delete d;
+  ASSERT_EQ(0, Arrow::count);
+  ASSERT_EQ(0, Object::count);
 }
 
 TEST(DistributorTest, fmap) {
@@ -58,6 +60,11 @@ TEST(DistributorTest, fmap) {
   ASSERT_FLOAT_EQ(324, fcount);
   d->publish(5322);
   ASSERT_FLOAT_EQ(5322, fcount);
+
+  delete d;
+  delete df;
+  ASSERT_EQ(0, Arrow::count);
+  ASSERT_EQ(0, Object::count);
 }
 
 TEST(DistributorTest, filter) {
@@ -72,7 +79,7 @@ TEST(DistributorTest, filter) {
 
   int icount = 0;
   std::function<void(int)> testF = [&icount](int a) {
-    DPRINT("testF: "); DPRINT(a);
+    DPRINT("testF: "); DPRINTLN(a);
     icount = a;
   };
   d2->subscribe(testF);
@@ -89,6 +96,8 @@ TEST(DistributorTest, filter) {
 
   delete d2;
   delete d1;
+  ASSERT_EQ(0, Arrow::count);
+  ASSERT_EQ(0, Object::count);
 }
 
 #endif /* DISTRIBUTOR_TESTS_H_ */
