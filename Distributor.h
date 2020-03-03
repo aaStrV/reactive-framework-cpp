@@ -1,5 +1,6 @@
 #ifndef DISTRIBUTOR_H_
 #define DISTRIBUTOR_H_
+#include <functional>
 #include "reactive-framework-cpp.h"
 
 namespace reacf {
@@ -131,9 +132,17 @@ class Object {
     return in_.find(a) == in_.end() ? false : true;
   }
 
+//  bool hasAnyIn(void) {
+//    return in_.size() == 0 ? false : true;
+//  }
+
   bool hasOut(Arrow *a) {
     return out_.find(a) == out_.end() ? false : true;
   }
+
+//  bool hasOut(void) {
+//    return out_.size == 0 ? false : true;
+//  }
 
   virtual void addIn(Arrow *a) {
     DDPRINT(this);

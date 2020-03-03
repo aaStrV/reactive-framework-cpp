@@ -2,19 +2,20 @@
 #include <gtest.h>
 #include <vector>
 #include "reactive-framework-cpp.h"
-#include "stream_tests.h"
-#include "fold_tests.h"
-#include "dispetcher-tests.h"
-#include "observable-tests.h"
+//#include "stream_tests.h"
+//#include "fold_tests.h"
+//#include "dispetcher-tests.h"
+//#include "observable-tests.h"
 #include "distributor_tests.h"
+#include "property-tests.h"
 using namespace std;
 using namespace reacf;
 
-TEST(GettimeofdayTest, base) {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  ASSERT_GT(tv.tv_sec, 1582744264);
-}
+//TEST(GettimeofdayTest, base) {
+//  struct timeval tv;
+//  gettimeofday(&tv, NULL);
+//  ASSERT_GT(tv.tv_sec, 1582744264);
+//}
 
 int main(int argc, char **argv) {
 //  cout << "Started" << endl;
