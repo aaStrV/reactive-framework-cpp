@@ -1,6 +1,7 @@
 #ifndef DISTRIBUTOR_H_
 #define DISTRIBUTOR_H_
 #include <functional>
+#include <set>
 #include "reactive-framework-cpp.h"
 
 namespace reacf {
@@ -24,6 +25,7 @@ class Arrow {
       codom(codom) {
     if (codom != nullptr) {
       addIn(codom, this);
+
     }
     if (dom != nullptr) {
       addOut(dom, this);
