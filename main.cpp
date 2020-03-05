@@ -1,3 +1,16 @@
+/*
+ * main.h
+ *
+ *  Created on: 5 мар. 2020 г.
+ *      Author: Sergej_Pechenin
+ *
+ * Copyright (C) 2020 Sergej_Pechenin.
+ *
+ * License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>
+ * This is free software: you are free to change and redistribute it.
+ * There is NO WARRANTY, to the extent permitted by law.
+ */
+
 #include <iostream>
 #include <gtest.h>
 #include <vector>
@@ -17,7 +30,8 @@ using namespace reacf;
 //  ASSERT_GT(tv.tv_sec, 1582744264);
 //}
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 //  cout << "Started" << endl;
 //  function<float(int)> int2float = [](int i) -> float {
 //    return static_cast<float>(i);
@@ -49,6 +63,6 @@ int main(int argc, char **argv) {
 //  Event<int> e1(4);
 //  auto it_f1_1 = s.subscribe(f1);
 //  s2.set(e1);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+	testing::InitGoogleTest(&argc, argv);
+	return RUN_ALL_TESTS();
 }
