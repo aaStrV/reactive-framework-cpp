@@ -188,33 +188,21 @@ public:
 
     virtual void addIn(Arrow *a)
     {
-        DDPRINT(this);
-        DDPRINT(":addIn adding input ");
-        DDPRINTLN(a);
         this->in_.insert(a);
     }
 
     virtual void addOut(Arrow *a)
     {
-        DDPRINT(this);
-        DDPRINT(":addOut adding output ");
-        DDPRINTLN(a);
         this->out_.insert(a);
     }
 
     virtual void removeIn(Arrow *a)
     {
-        DDPRINT(this);
-        DDPRINT(":removeIn removing input ");
-        DDPRINTLN(a);
         this->in_.erase(a);
     }
 
     virtual void removeOut(Arrow *a)
     {
-        DDPRINT(this);
-        DDPRINT(":removeOut removing output ");
-        DDPRINTLN(a);
         this->out_.erase(a);
     }
 
@@ -267,11 +255,9 @@ public:
     Morphism(Object *dom, Object *codom, fun_t f) :
             Arrow(dom, codom), f_(f)
     {
-        DDPRINT(this);DDPRINTLN(":Morphism");
     }
     virtual ~Morphism()
     {
-        DDPRINT(this);DDPRINTLN(":~Morphism");
     }
 //  Dest operator()(Source a) {
 //    DDPRINT(this);
@@ -286,8 +272,6 @@ public:
 
     virtual void apply(void *a)
     {
-        DDDPRINT(this);
-        DDDPRINTLN(":Morphism:apply");
         result_ = f_(*((Source*) a));
     }
 };
