@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 2.6)
 
 project (reactive-framework-cpp)
+SET ( CMAKE_BUILD_TYPE "Debug" )
 
 if(WIN32)
 	add_executable(${CMAKE_PROJECT_NAME} main-win.cpp)

@@ -13,12 +13,8 @@
 
 #include <iostream>
 #include <gtest.h>
-#include <vector>
+//#include <vector>
 #include "reactive-framework-cpp.h"
-//#include "stream_tests.h"
-//#include "fold_tests.h"
-//#include "dispetcher-tests.h"
-//#include "observable-tests.h"
 #include "distributor_tests.h"
 #include "property-tests.h"
 using namespace std;
@@ -63,6 +59,7 @@ int main(int argc, char **argv)
 //  Event<int> e1(4);
 //  auto it_f1_1 = s.subscribe(f1);
 //  s2.set(e1);
-	testing::InitGoogleTest(&argc, argv);
-	return RUN_ALL_TESTS();
+
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
