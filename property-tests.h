@@ -49,12 +49,13 @@ TEST(PropertyTest, plus)
     E = A * B;
     F = A / B;
     H = I % J;
+    assert( abs(A.getValue() - 0.0001) <= 0.001 );
     ASSERT_FLOAT_EQ(0, A.getValue());
     ASSERT_FLOAT_EQ(0, B.getValue());
     ASSERT_FLOAT_EQ(0, C.getValue());
     ASSERT_FLOAT_EQ(0, D.getValue());
     ASSERT_FLOAT_EQ(0, E.getValue());
-//    ASSERT_NE(F.getValue(), F.getValue());
+    ASSERT_NE(F.getValue(), F.getValue()); // Nan != NaN
     ASSERT_FLOAT_EQ(0, G.getValue());
 
     A = 10;

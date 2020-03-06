@@ -40,9 +40,9 @@
 
 #include <functional>
 #include <set>
-#include "defines.h"
-//#include "distributor.h"
-//#include "property.h"
+//#include "defines.h"
+////#include "distributor.h"
+////#include "property.h"
 
 namespace reacf
 {
@@ -447,6 +447,7 @@ class Property: Distributor<T>
         {
             delete self_;
         }
+        self_ = nullptr;
     }
 
 public:
