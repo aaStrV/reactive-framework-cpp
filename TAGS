@@ -1,144 +1,115 @@
 
+defines.h,26
+#define DEFINES_H_16,367
+
+distributor_tests.h,77
+#define DISTRIBUTOR_TESTS_H_16,387
+TEST(19,453
+TEST(45,1028
+TEST(79,1826
+
+property-tests.h,59
+#define PROPERTY_TESTS_H_16,381
+TEST(19,444
+TEST(39,990
+
+reactive-framework-cpp.h,2792
+#define REACTIVE_FRAMEWORK_CPP_H_24,832
+class Arrow 55,1546
+  Object *dom;dom56,1560
+  Object *codom;codom57,1575
+  static int count;60,1602
+  Arrow(62,1623
+  virtual ~Arrow(72,1824
+  Object *getDom(getDom83,1992
+  Object *getCodom(getCodom85,2032
+  void setDom(87,2076
+  void setCodom(89,2115
+  virtual void apply(91,2158
+  virtual void *retrieve(retrieve93,2191
+  friend void addIn(95,2243
+  friend void addOut(96,2285
+  friend void removeIn(97,2328
+  friend void removeOut(98,2373
+int Arrow::count 101,2423
+class Object 103,2446
+  std::set<Arrow *> in_;105,2473
+  std::set<Arrow *> out_;106,2498
+  static int count;109,2534
+  Object(111,2555
+  virtual ~Object(112,2582
+  bool hasIn(135,3004
+  bool hasOut(141,3164
+  virtual void addIn(147,3324
+  virtual void addOut(149,3381
+  virtual void removeIn(151,3440
+  virtual void removeOut(153,3499
+  virtual void distribute(155,3560
+int Object::count 160,3634
+void addIn(162,3658
+void addOut(163,3707
+void removeIn(164,3758
+void removeOut(165,3813
+template <typename Dest,173,4072
+class Morphism 174,4114
+  typedef std::function<Dest(Source)> fun_t;176,4155
+  fun_t f_;179,4211
+  Dest result_;180,4223
+  using dom_t 183,4249
+  using codom_t 184,4273
+  Morphism(186,4298
+  virtual ~Morphism(187,4376
+  virtual void *retrieve(retrieve194,4532
+  virtual void apply(196,4585
+class Terminal 205,4787
+  using terminal_t 207,4829
+  static int count;209,4856
+  Terminal(212,4886
+  ~Terminal(214,4916
+  virtual void addIn(216,4947
+  virtual void addOut(218,4982
+  virtual void removeIn(220,5018
+  virtual void removeOut(222,5070
+class Initial 225,5112
+  static int count;227,5137
+  Initial(230,5167
+  ~Initial(232,5196
+int Terminal::count 235,5229
+int Initial::count 236,5254
+class Distributor 239,5301
+  typedef std::function<void(T)> fun_t;241,5353
+  static int count;242,5393
+  virtual ~Distributor(244,5414
+  Distributor<Dest> *fmap(fmap247,5470
+  Distributor<T> *filter(filter253,5694
+  Arrow *subscribe(subscribe262,6036
+  void unsubscribe(273,6369
+  void publish(276,6443
+  void publishRef(283,6583
+  virtual void distribute(289,6726
+class Property 303,6938
+  T value_;304,6972
+  Morphism<Morphism305,6984
+  Morphism<Terminal::terminal_t, T> *self_;self_305,6984
+  void _subscribeSelf(307,7029
+  void _unsubscribeSelf(319,7372
+  Property(328,7529
+  virtual ~Property(329,7574
+  Property(332,7636
+  Property(336,7705
+  Property(340,7834
+  Property &operator=(operator=359,8169
+  Property &operator=(operator=370,8388
+  Property &operator=(operator=396,8902
+  T &getValue(getValue401,8976
+  Property operator+(403,9016
+  Property operator-(417,9346
+  Property operator*(431,9676
+  Property operator/(445,10006
+  Property operator%(459,10336
+
 main.cpp,17
-int main(33,785
+int main(31,674
 
 main-win.cpp,17
-int main(20,463
-
-defines.h,535
-#define DEFINES_H_15,365
-#define DEBUG 17,385
-    #define DPRINT(22,447
-    #define DPRINTLN(23,482
-#define DPRINT(25,538
-#define DPRINTLN(26,556
-    #define DDPRINT(29,595
-    #define DDPRINTLN(30,631
-#define DDPRINT(32,688
-#define DDPRINTLN(33,707
-    #define DDDPRINT(36,747
-    #define DDDPRINTLN(37,784
-#define DDDPRINT(39,842
-#define DDDPRINTLN(40,862
-  #define DPRINT(43,897
-  #define DPRINTLN(44,917
-  #define DDPRINT(45,939
-  #define DDPRINTLN(46,960
-  #define DDDPRINT(47,983
-  #define DDDPRINTLN(48,1005
-
-Distributor.h,1910
-#define DISTRIBUTOR_H_15,372
-namespace reacf20,469
-class Arrow29,655
-	Object *dom;dom31,669
-	Object *codom;codom32,683
-	static int count;35,708
-	Arrow(37,728
-	virtual ~Arrow(54,990
-	Object* getDom(70,1216
-	Object* getCodom(75,1259
-	virtual void apply(80,1306
-	virtual void* retrieve(85,1383
-int Arrow::count 96,1614
-class Object98,1637
-	std::set<Arrow*> in_;101,1663
-	std::set<Arrow*> out_;102,1686
-	static int count;105,1719
-	Object(107,1739
-	virtual ~Object(113,1840
-	bool hasIn(163,2769
-	bool hasOut(172,2926
-	virtual void addIn(181,3083
-	virtual void addOut(189,3211
-	virtual void removeIn(197,3343
-	virtual void removeOut(205,3478
-	virtual void distribute(213,3617
-int Object::count 220,3692
-void addIn(222,3716
-void addOut(226,3766
-void removeIn(230,3818
-void removeOut(234,3874
-template<typename Dest,245,4134
-class Morphism:Morphism246,4175
-	typedef std::function<Dest(Source)> fun_t;249,4214
-	fun_t f_;252,4268
-	Dest result_;253,4279
-	using dom_t 256,4303
-	using codom_t 257,4326
-	Morphism(259,4350
-	virtual ~Morphism(264,4473
-	virtual void* retrieve(274,4662
-	virtual void apply(279,4718
-class Terminal:Terminal293,4974
-	using terminal_t 296,5014
-	static int count;298,5040
-	Terminal(301,5068
-	~Terminal(308,5174
-	virtual void addIn(315,5282
-	virtual void addOut(321,5398
-	virtual void removeIn(327,5516
-	virtual void removeOut(334,5634
-class Initial341,5761
-	static int count;344,5785
-	Initial(346,5812
-	~Initial(353,5916
-int Terminal::count 361,6025
-int Initial::count 362,6050
-class Distributor:Distributor365,6096
-	typedef std::function<void(T)> fun_t;368,6146
-	static int count;369,6185
-	virtual ~Distributor(371,6205
-	Distributor<Dest>* fmap(376,6261
-	Distributor<T>* filter(385,6515
-	Arrow* subscribe(400,6931
-	void unsubscribe(415,7287
-	void publish(423,7406
-	void publishRef(436,7641
-	virtual void distribute(448,7885
-
-distributor_tests.h,267
-#define DISTRIBUTOR_TESTS_H_15,385
-TEST(18,451
-TEST(46,1032
-auto p 63,1455
-p 71,1634
-delete d;77,1762
-delete df;78,1772
-TEST(83,1843
-Distributor<int> *d1 d192,2021
-Distributor<int> *d2 d293,2066
-int icount 95,2120
-delete d2;113,2437
-delete d1;114,2448
-
-Property.h,615
-#define PROPERTY_H_15,367
-namespace reacf18,413
-class Property32,693
-	T *value_;value_34,710
-	Distributor<T> *distributor_;distributor_35,722
-	void _setValue(42,938
-	Property(48,1023
-	Property(59,1195
-	Property(70,1381
-	Property& operator=(operator=87,1707
-	Property& operator=(operator=112,2120
-	Property& operator=(operator=132,2520
-	T getValue(140,2627
-	void subscribe(145,2670
-	void publish(150,2749
-	~Property(155,2803
-	Property<T>& operator+(160,2846
-	Property<T>& operator-(181,3173
-	Property<T>& operator*(202,3500
-	Property<T>& operator/(223,3827
-	Property<T>& operator%(244,4154
-
-property-tests.h,46
-#define PROPERTY_TESTS_H_15,379
-TEST(18,442
-
-reactive-framework-cpp.h,65
-#define REACTIVE_FRAMEWORK_CPP_H_24,832
-namespace reacf45,1313
+int main(23,484
